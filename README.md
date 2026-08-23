@@ -6,7 +6,7 @@
 Проект показывает полный цикл работы аналитика: моделирование данных, контроль качества, оркестрация, эксперименты.
 
 > **Данные реальные и открытые.** Backbone — [Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii) (UCI, CC BY 4.0): ~1,07 млн транзакций британского онлайн-ритейлера за 2009–2011.
-> Эксперименты (Модуль C) — на публичных рандомизированных датасетах. Это не продакшн-данные конкретной компании, а открытые наборы; методология и код — рабочие.
+> A/B (Модуль C) — реальный рандомизированный эксперимент [Hillstrom / MineThatData](https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html), 64 000 клиентов. Это открытые наборы, не продакшн-данные компании; методология и код — рабочие.
 
 ---
 
@@ -17,7 +17,8 @@
 | Хранилище | PostgreSQL (Neon, облако) / Docker Postgres локально |
 | Трансформации | **dbt** (staging → marts, тесты, документация) |
 | Оркестрация / CI | **GitHub Actions** (cron + ручной запуск, секреты) |
-| Анализ / A/B / каузальность | Python: pandas, numpy, statsmodels, scikit-uplift *(Модули C–D)* |
+| A/B и статистика | Python: pandas, numpy, statsmodels, scipy (z-тест, bootstrap, power/MDE) |
+| Каузальность | diff-in-diff / CausalImpact / uplift *(Модуль D)* |
 | BI | Looker Studio / Superset *(Модуль E)* |
 
 ---
@@ -62,11 +63,30 @@ fct_orders         (table)   факт заказов, грейн = один invo
 - при каждом push в `main`.
 
 Шаги прогона: установка dbt → `dbt debug` → `dbt run` → `dbt test` против облачного Postgres (Neon).
-Реквизиты подключения хранятся в **GitHub Secrets** (`NEON_HOST`, `NEON_PORT`, `NEON_USER`, `NEON_PASSWORD`, `NEON_DBNAME`) — в коде паролей нет.
+Реквизиты подключения хранятся в **GitHub Secrets** (`NEON_*`) — в коде паролей нет.
 
 ---
 
-## Результаты прогона
+## A/B-тест (Модуль C)
+
+Полный цикл эксперимента на реальном рандомизированном датасете Hillstrom (`notebooks/Module_C_ab_test.ipynb`):
+гипотеза → primary + guardrail метрики → SRM-чек → расчёт MDE/мощности → z-тест с ДИ → непрерывная метрика через bootstrap → разведение статзначимости и экономики (ROMI).
+
+**Сравнение:** Womens E-Mail (treatment) vs No E-Mail (control), по ~21 300 клиентов в группе.
+
+| Метрика | Control | Treatment | Эффект | Значимость |
+|---|---|---|---|---|
+| Конверсия | 0.57% | 0.88% | **+0.31 п.п. (+54%)** | z=3.78, p=0.0002 |
+| Visit rate | 10.6% | 15.1% | +4.5 п.п. (+43%) | p < 1e-40 |
+| Spend (ARPU) | $0.653 | $1.077 | **+$0.424** | Welch p=0.001; bootstrap CI [0.15; 0.69] |
+
+**SRM-чек** пройден (p=0.70) — рандомизация валидна. **ROMI** при стоимости письма $0.10 — **~324%**.
+
+**Вывод:** эффект причинный (рандомизация), значимый по всей воронке и экономически выгодный — рекомендация раскатывать. Ограничение: одна вариация против контроля; выбор Mens vs Womens требует отдельного теста.
+
+---
+
+## Результаты dbt-прогона
 
 ```text
 dbt run  -> PASS=4   (stg_online_retail + 3 витрины)
@@ -85,6 +105,7 @@ cohort_retention: 325 строк матрицы удержания
 1. Заведи бесплатный Postgres на [neon.tech](https://neon.tech), скопируй connection string.
 2. Открой `notebooks/Module_A_online.ipynb` в Google Colab.
 3. Вставь connection string в ячейку 2 и прогони ячейки: загрузка данных → `dbt run` → `dbt test` → проверка витрин.
+4. A/B: открой `notebooks/Module_C_ab_test.ipynb` и прогони сверху вниз (данные тянутся сами).
 
 ### Вариант 2 — локально (Docker + dbt)
 ```bash
@@ -105,7 +126,7 @@ dbt test --profiles-dir .
 
 - [x] **Модуль A** — dbt + витрины на реальных данных, тесты качества
 - [x] **Модуль B** — оркестрация: GitHub Actions (cron + ручной запуск + CI, секреты)
-- [ ] **Модуль C** — A/B end-to-end на реальном рандомизированном эксперименте (Hillstrom): дизайн, размер выборки, guardrail, значимость, ROMI
+- [x] **Модуль C** — A/B end-to-end на реальном эксперименте (Hillstrom): дизайн, MDE, guardrail, значимость, ROMI
 - [ ] **Модуль D** — каузальная оценка эффекта (diff-in-diff / CausalImpact / uplift) с проверкой против экспериментальной истины
 - [ ] **Модуль E** — BI-дашборд (Looker Studio / Superset) поверх витрин
 
@@ -122,7 +143,9 @@ analytics-platform/
 │   │   └── marts/              fct_orders, dim_customers, cohort_retention
 │   ├── dbt_project.yml
 │   └── profiles.yml            креды через env vars (NEON_*)
-├── notebooks/                  Colab-ноутбук для онлайн-запуска
+├── notebooks/
+│   ├── Module_A_online.ipynb   dbt + витрины (онлайн-запуск)
+│   └── Module_C_ab_test.ipynb  A/B-тест на данных Hillstrom
 ├── docker-compose.yml          локальный Postgres
 ├── load_data.py                загрузка Online Retail II
 └── requirements.txt
