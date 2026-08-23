@@ -18,7 +18,7 @@
 | Трансформации | **dbt** (staging → marts, тесты, документация) |
 | Оркестрация / CI | **GitHub Actions** (cron + ручной запуск, секреты) |
 | A/B и статистика | Python: pandas, numpy, statsmodels, scipy (z-тест, bootstrap, power/MDE) |
-| Каузальность | diff-in-diff / CausalImpact / uplift *(Модуль D)* |
+| Каузальность | propensity score (IPW, регрессионная корректировка), uplift / CATE (sklearn) |
 | BI | Looker Studio / Superset *(Модуль E)* |
 
 ---
@@ -86,6 +86,19 @@ fct_orders         (table)   факт заказов, грейн = один invo
 
 ---
 
+## Каузальная оценка (Модуль D)
+
+Наблюдательная causal inference с валидацией против экспериментальной истины (`notebooks/Module_D_causal.ipynb`), исход — visit:
+
+- Эталон (рандомизация): ATE = **+0.0452**.
+- На искусственно смещённой выборке наивная оценка **+0.0591** (завышена).
+- **IPW** → +0.0347, **регрессионная корректировка** → +0.0398 — обе вернулись к истине (регрессия точнее, ошибка 0.0054 против 0.0138 у наивной).
+- **Uplift (T-learner):** фактический аплифт растёт по децилям от −0.14 до **+0.28** — модель ранжирует отклик, таргетинг топ-сегментов эффективнее ковровой рассылки.
+
+Показывает: propensity-методы восстанавливают причинный эффект при известном смещении, uplift переводит средний эффект в решение «кого таргетить».
+
+---
+
 ## Результаты dbt-прогона
 
 ```text
@@ -127,7 +140,7 @@ dbt test --profiles-dir .
 - [x] **Модуль A** — dbt + витрины на реальных данных, тесты качества
 - [x] **Модуль B** — оркестрация: GitHub Actions (cron + ручной запуск + CI, секреты)
 - [x] **Модуль C** — A/B end-to-end на реальном эксперименте (Hillstrom): дизайн, MDE, guardrail, значимость, ROMI
-- [ ] **Модуль D** — каузальная оценка эффекта (diff-in-diff / CausalImpact / uplift) с проверкой против экспериментальной истины
+- [x] **Модуль D** — каузальная оценка (propensity score: IPW + регрессионная корректировка) с проверкой против экспериментальной истины + uplift/CATE
 - [ ] **Модуль E** — BI-дашборд (Looker Studio / Superset) поверх витрин
 
 ---
@@ -145,7 +158,8 @@ analytics-platform/
 │   └── profiles.yml            креды через env vars (NEON_*)
 ├── notebooks/
 │   ├── Module_A_online.ipynb   dbt + витрины (онлайн-запуск)
-│   └── Module_C_ab_test.ipynb  A/B-тест на данных Hillstrom
+│   ├── Module_C_ab_test.ipynb  A/B-тест на данных Hillstrom
+│   └── Module_D_causal.ipynb   каузальная оценка + uplift
 ├── docker-compose.yml          локальный Postgres
 ├── load_data.py                загрузка Online Retail II
 └── requirements.txt
