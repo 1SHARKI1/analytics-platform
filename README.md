@@ -24,64 +24,58 @@
 
 ## Архитектура данных
 
-\`\`\`
+```text
 raw.online_retail            сырьё как есть (загрузка из UCI)
-        │
-        ▼
+        |
+        v
 stg_online_retail  (view)    очистка: отмены, пустые клиенты, валидные суммы, line_revenue
-        │
-        ▼
+        |
+        v
 fct_orders         (table)   факт заказов, грейн = один invoice
-        │
-        ├──► dim_customers      (table)   RFM + когорта по клиенту
-        │
-        └──► cohort_retention   (table)   матрица удержания: когорта × период
-\`\`\`
+        |
+        +--> dim_customers      (table)   RFM + когорта по клиенту
+        |
+        +--> cohort_retention   (table)   матрица удержания: когорта x период
+```
 
-Слой \`staging\` — очистка и sanity-check (убраны отмены \`Invoice C%\`, строки без \`customer_id\`, невалидные количества/цены).
-Слой \`marts\` — витрины данных (data marts), готовые для BI и анализа.
+Слой `staging` — очистка и sanity-check (убраны отмены `Invoice C%`, строки без `customer_id`, невалидные количества/цены).
+Слой `marts` — витрины данных (data marts), готовые для BI и анализа.
 
 ---
 
 ## Витрины
 
-- **\`fct_orders\`** — заказы: \`order_id\`, \`customer_id\`, дата, страна, число позиций, выручка заказа.
-- **\`dim_customers\`** — RFM по клиенту: recency, frequency, monetary, месяц когорты.
-- **\`cohort_retention\`** — удержание по когортам: \`cohort_month\`, \`period_number\`, активные клиенты, \`retention_rate\`.
+- **`fct_orders`** — заказы: `order_id`, `customer_id`, дата, страна, число позиций, выручка заказа.
+- **`dim_customers`** — RFM по клиенту: recency, frequency, monetary, месяц когорты.
+- **`cohort_retention`** — удержание по когортам: `cohort_month`, `period_number`, активные клиенты, `retention_rate`.
 
-Каждая витрина покрыта тестами качества (\`not_null\`, \`unique\`).
+Каждая витрина покрыта тестами качества (`not_null`, `unique`).
 
 ---
 
 ## Оркестрация (CI)
 
-Пайплайн запускается автоматически через **GitHub Actions** (\`.github/workflows/dbt.yml\`):
+Пайплайн запускается автоматически через **GitHub Actions** (`.github/workflows/dbt.yml`):
 
 - по расписанию — **cron ежедневно** (06:00 UTC);
 - вручную — кнопкой **Run workflow**;
-- при каждом push в \`main\`.
+- при каждом push в `main`.
 
-Шаги прогона: установка dbt → \`dbt debug\` → \`dbt run\` → \`dbt test\` против облачного Postgres (Neon).
-Реквизиты подключения хранятся в **GitHub Secrets** (\`NEON_HOST\`, \`NEON_PORT\`, \`NEON_USER\`, \`NEON_PASSWORD\`, \`NEON_DBNAME\`) — в коде паролей нет.
+Шаги прогона: установка dbt → `dbt debug` → `dbt run` → `dbt test` против облачного Postgres (Neon).
+Реквизиты подключения хранятся в **GitHub Secrets** (`NEON_HOST`, `NEON_PORT`, `NEON_USER`, `NEON_PASSWORD`, `NEON_DBNAME`) — в коде паролей нет.
 
 ---
 
 ## Результаты прогона
 
-\`\`\`
-dbt run  → PASS=4   (stg_online_retail + 3 витрины)
-dbt test → PASS=8   (ERROR=0)
+```text
+dbt run  -> PASS=4   (stg_online_retail + 3 витрины)
+dbt test -> PASS=8   (ERROR=0)
 
 fct_orders:       36 969 заказов
 dim_customers:    5 878 клиентов
 cohort_retention: 325 строк матрицы удержания
-\`\`\`
-
-<!-- Скриншоты положи в папку docs/ и раскомментируй:
-![dbt run & test](docs/dbt_run_test.png)
-![Витрина fct_orders](docs/fct_orders.png)
-![Матрица удержания](docs/retention.png)
--->
+```
 
 ---
 
@@ -89,11 +83,11 @@ cohort_retention: 325 строк матрицы удержания
 
 ### Вариант 1 — онлайн, без установки (Colab + Neon)
 1. Заведи бесплатный Postgres на [neon.tech](https://neon.tech), скопируй connection string.
-2. Открой \`notebooks/Module_A_online.ipynb\` в Google Colab.
-3. Вставь connection string в ячейку 2 и прогони ячейки: загрузка данных → \`dbt run\` → \`dbt test\` → проверка витрин.
+2. Открой `notebooks/Module_A_online.ipynb` в Google Colab.
+3. Вставь connection string в ячейку 2 и прогони ячейки: загрузка данных → `dbt run` → `dbt test` → проверка витрин.
 
 ### Вариант 2 — локально (Docker + dbt)
-\`\`\`bash
+```bash
 docker compose up -d
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -101,9 +95,9 @@ python load_data.py
 cd dbt
 dbt run  --profiles-dir .
 dbt test --profiles-dir .
-\`\`\`
+```
 
-> \`profiles.yml\` берёт креды из переменных окружения (\`NEON_*\`). Реальные строки подключения не коммитятся — только в секретах.
+Профиль `profiles.yml` берёт креды из переменных окружения (`NEON_*`). Реальные строки подключения не коммитятся — только в секретах.
 
 ---
 
@@ -119,7 +113,7 @@ dbt test --profiles-dir .
 
 ## Структура репозитория
 
-\`\`\`
+```text
 analytics-platform/
 ├── .github/workflows/dbt.yml   CI: запуск dbt по расписанию
 ├── dbt/                        dbt-проект (модели, тесты, профиль)
@@ -132,4 +126,4 @@ analytics-platform/
 ├── docker-compose.yml          локальный Postgres
 ├── load_data.py                загрузка Online Retail II
 └── requirements.txt
-\`\`\`
+```
