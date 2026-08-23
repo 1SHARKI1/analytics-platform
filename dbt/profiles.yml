@@ -3,10 +3,11 @@ analytics_platform:
   outputs:
     dev:
       type: postgres
-      host: localhost
-      port: 5432
-      user: analytics
-      password: analytics
-      dbname: analytics
+      host: "{{ env_var('NEON_HOST') }}"
+      port: "{{ env_var('NEON_PORT', '5432') | int }}"
+      user: "{{ env_var('NEON_USER') }}"
+      password: "{{ env_var('NEON_PASSWORD') }}"
+      dbname: "{{ env_var('NEON_DBNAME') }}"
       schema: public
+      sslmode: require
       threads: 4
