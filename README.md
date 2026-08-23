@@ -133,4 +133,3 @@ analytics-platform/
 ├── load_data.py                загрузка Online Retail II
 └── requirements.txt
 \`\`\`
-
