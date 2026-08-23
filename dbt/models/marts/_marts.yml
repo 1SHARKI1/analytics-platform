@@ -1,0 +1,16 @@
+version: 2
+models:
+  - name: fct_orders
+    description: "Факт заказов, грейн = invoice."
+    columns:
+      - name: order_id
+        tests: [not_null, unique]
+      - name: customer_id
+        tests: [not_null]
+  - name: dim_customers
+    description: "RFM и когорта по клиенту."
+    columns:
+      - name: customer_id
+        tests: [not_null, unique]
+  - name: cohort_retention
+    description: "Матрица удержания по когортам."

@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: online_retail
+
+models:
+  - name: stg_online_retail
+    description: "Очищенные строки заказов: без отмен, без пустых клиентов, только валидные суммы."
+    columns:
+      - name: invoice
+        tests: [not_null]
+      - name: customer_id
+        tests: [not_null]
+      - name: line_revenue
+        tests: [not_null]
