@@ -19,7 +19,7 @@
 | Оркестрация / CI | **GitHub Actions** (cron + ручной запуск, секреты) |
 | A/B и статистика | Python: pandas, numpy, statsmodels, scipy (z-тест, bootstrap, power/MDE) |
 | Каузальность | propensity score (IPW, регрессионная корректировка), uplift / CATE (sklearn) |
-| BI | Looker Studio / Superset *(Модуль E)* |
+| BI | **Yandex DataLens** (live-подключение к витринам в Neon) |
 
 ---
 
@@ -99,6 +99,18 @@ fct_orders         (table)   факт заказов, грейн = один invo
 
 ---
 
+## BI-дашборд (Модуль E)
+
+Дашборд в **Yandex DataLens**, подключён напрямую к витринам в Neon (live).
+[Открыть дашборд](https://datalens.yandex/yucf9ot72cz2h)
+
+Состав: скоркарты (выручка, заказы, средний чек, клиенты), выручка по месяцам (сезонность), выручка по странам (без домашнего рынка UK), тепловая карта когортного удержания.
+
+![Дашборд DataLens](docs/dashboard.png)
+![Когортное удержание](docs/cohort_heatmap.png)
+
+---
+
 ## Результаты dbt-прогона
 
 ```text
@@ -141,7 +153,7 @@ dbt test --profiles-dir .
 - [x] **Модуль B** — оркестрация: GitHub Actions (cron + ручной запуск + CI, секреты)
 - [x] **Модуль C** — A/B end-to-end на реальном эксперименте (Hillstrom): дизайн, MDE, guardrail, значимость, ROMI
 - [x] **Модуль D** — каузальная оценка (propensity score: IPW + регрессионная корректировка) с проверкой против экспериментальной истины + uplift/CATE
-- [ ] **Модуль E** — BI-дашборд (Looker Studio / Superset) поверх витрин
+- [x] **Модуль E** — BI-дашборд в Yandex DataLens поверх витрин (live-подключение к Neon)
 
 ---
 
